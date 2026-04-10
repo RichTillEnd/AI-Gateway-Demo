@@ -20,21 +20,21 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Expand reset_token column from VARCHAR(10) to VARCHAR(100) to support token_urlsafe(32) tokens."""
-    op.alter_column(
-        "users",
-        "reset_token",
-        existing_type=sa.String(10),
-        type_=sa.String(100),
-        existing_nullable=True,
-    )
+    with op.batch_alter_table("users") as batch_op:
+        batch_op.alter_column(
+            "reset_token",
+            existing_type=sa.String(10),
+            type_=sa.String(100),
+            existing_nullable=True,
+        )
 
 
 def downgrade() -> None:
     """Revert reset_token column back to VARCHAR(10)."""
-    op.alter_column(
-        "users",
-        "reset_token",
-        existing_type=sa.String(100),
-        type_=sa.String(10),
-        existing_nullable=True,
-    )
+    with op.batch_alter_table("users") as batch_op:
+        batch_op.alter_column(
+            "reset_token",
+            existing_type=sa.String(100),
+            type_=sa.String(10),
+            existing_nullable=True,
+        )
