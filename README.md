@@ -1,6 +1,6 @@
 # AI Gateway — 企業級 AI 平台 Demo
 
-Guide : https://ai-gateway-demo-9u5.pages.dev/guide
+功能導覽說明 : https://ai-gateway-demo-9u5.pages.dev/guide
 
 以 **FastAPI（Python 3.12）** 建構的企業級 AI 平台。整合 OpenAI GPT 與 Google Gemini 模型。
 提供完整的用戶管理、成本配額控管、RAG 知識庫、PII 個資偵測、Text-to-SQL 自然語言資料庫查詢、限流與安全稽核能力。
