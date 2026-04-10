@@ -1,6 +1,6 @@
-# AI Gateway — 企業級 AI 中台 Demo
+# AI Gateway — 企業級 AI 平台 Demo
 
-以 **FastAPI（Python 3.12）** 建構的企業級 AI 中介平台。整合 OpenAI GPT 與 Google Gemini 模型，提供完整的用戶管理、成本配額控管、RAG 知識庫、PII 個資偵測、限流與安全稽核能力。
+以 **FastAPI（Python 3.12）** 建構的企業級 AI 平台。整合 OpenAI GPT 與 Google Gemini 模型，提供完整的用戶管理、成本配額控管、RAG 知識庫、PII 個資偵測、Text-to-SQL、限流與安全稽核能力。
 
 ---
 
@@ -117,11 +117,13 @@ print('Done')
 
 ## 環境變數
 
-詳見 `.env.example`。只需兩個必填項即可啟動：
+詳見 `.env.example`。只必填項即可啟動：
 
 ```
 OPENAI_KEY        # OpenAI API 金鑰
+GEMINI_API_KEY    # Gemini API 金鑰
+TAVILY_API_KEY    # Tavily API 金鑰
 JWT_SECRET_KEY    # 任意 32 字元以上的隨機字串
 ```
 
-其餘（Gemini、網路搜尋、Email、Redis）皆為選填，未設定時自動降級不影響核心功能。
+其餘（Email、Redis）皆為選填，未設定不影響核心功能。
