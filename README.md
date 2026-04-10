@@ -14,7 +14,8 @@
 - **Rate Limiting** — 滑動視窗計數（5/分 · 60/小時 · 100/天），支援 Redis 或記憶體備援
 - **網路搜尋** — Tavily 即時搜尋注入對話上下文
 - **Text-to-SQL** — 自然語言轉 SQL 查詢內部資料庫
-- **圖像生成** — OpenAI gpt-image-1 與 Google Imagen 4
+- **文字輸出** — OpenAI → gpt-5.4 | Google → Gemini 3.1 Flash Lite Preview
+- **圖像生成** — OpenAI gpt-image-1.5 與 Google Imagen ultra 4
 - **用戶管理與後台** — JWT 認證、角色權限、使用統計、錯誤日誌
 
 ---
