@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Gateway — 使用指南</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Base ──────────────────────────────── */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+
+/* ── Theme Tokens ──────────────────────────────── */
+
+:root[data-theme="dark"]{
+  --bg:#161618;
+  --bg-mesh:#1a1a1e;
+  --surface:rgba(255,255,255,0.05);
+  --surface-solid:#1e1e24;
+  --surface-hover:rgba(255,255,255,0.08);
+  --border:rgba(255,255,255,0.07);
+  --border-strong:rgba(255,255,255,0.12);
+  --text:#f0f0f2;
+  --text-2:#a0a0ab;
+  --text-3:#666670;
+  --accent:#a78bfa;
+  --accent-soft:rgba(167,139,250,0.08);
+  --accent-glow:rgba(167,139,250,0.12);
+  --accent-text:#c4b5fd;
+  --gradient:linear-gradient(135deg,#7c5cbf,#a78bfa);
+  --gradient-subtle:linear-gradient(135deg,rgba(167,139,250,0.06),rgba(139,92,191,0.06));
+  --card-shadow:0 1px 3px rgba(0,0,0,0.3),0 8px 32px rgba(0,0,0,0.4);
+  --hero-shadow:0 32px 80px rgba(0,0,0,0.5);
+  --nav-bg:rgba(22,22,24,0.88);
+  --nav-shadow:0 1px 0 rgba(255,255,255,0.06);
+  --code-bg:rgba(255,255,255,0.04);
+  --kbd-bg:#2a2a32;
+  --kbd-border:#3a3a44;
+  --orb-1:rgba(110,90,180,0.08);
+  --orb-2:rgba(140,90,120,0.06);
+  --orb-3:rgba(70,110,160,0.06);
+  --step-line:rgba(167,139,250,0.15);
+  --tag-bg:rgba(167,139,250,0.10);
+  --tag-text:#c4b5fd;
+  --tip-bg:rgba(167,139,250,0.06);
+  --tip-border:rgba(167,139,250,0.18);
+  --warn-bg:rgba(245,158,11,0.08);
+  --warn-border:rgba(245,158,11,0.20);
+  --warn-text:#fbbf24;
+  --img-shadow:0 4px 24px rgba(0,0,0,0.4);
+  --toggle-bg:rgba(167,139,250,0.12);
+}
+
+body{
+  font-family:'Noto Sans TC',system-ui,sans-serif;
+  background:var(--bg);color:var(--text);
+  line-height:1.75;font-size:18px;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+
+/* ── Aurora WebGL Canvas ───────────────────────── */
+#aurora-canvas{
+  position:fixed;inset:0;z-index:0;
+  width:100%;height:100%;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity 2s ease;
+}
+#aurora-canvas.ready{ opacity:1; }
+
+.aurora-light-bg{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:#f6f4fb;
+  display:none;
+}
+
+/* ── Top Nav ───────────────────────────────────── */
+.top-nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:var(--nav-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  box-shadow:var(--nav-shadow);
+  transition:transform .35s cubic-bezier(.4,0,.2,1),box-shadow .3s;
+}
+.top-nav.hidden{transform:translateY(-100%)}
+.nav-inner{max-width:900px;margin:0 auto;padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:56px}
+.nav-brand{font-weight:600;font-size:15px;color:var(--text);letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.nav-brand svg{width:20px;height:20px}
+.nav-links{display:flex;gap:4px;align-items:center}
+.nav-links a{
+  padding:6px 12px;border-radius:8px;font-size:15px;font-weight:500;
+  color:var(--text-2);text-decoration:none;transition:all .15s;
+}
+.nav-links a:hover{color:var(--text);background:var(--accent-soft)}
+.nav-links a.active{color:var(--accent-text);background:var(--accent-soft)}
+
+/* ── Mobile Nav Toggle ─────────────────────────── */
+.nav-toggle{display:none;width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--toggle-bg);cursor:pointer;align-items:center;justify-content:center;color:var(--text-2)}
+.nav-toggle svg{width:18px;height:18px}
+
+/* ── Progress Bar ──────────────────────────────── */
+.progress-bar{position:fixed;top:0;left:0;height:2px;background:var(--gradient);z-index:200;transition:width .15s;border-radius:0 2px 2px 0}
+
+/* ── Main Content ──────────────────────────────── */
+.content{position:relative;z-index:2;max-width:900px;margin:0 auto;padding:0 32px}
+
+/* ── Hero ──────────────────────────────────────── */
+.hero{
+  padding:140px 0 80px;text-align:center;
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 16px;border-radius:100px;
+  background:var(--accent-soft);color:var(--accent-text);
+  font-size:12.5px;font-weight:600;letter-spacing:.02em;
+  margin-bottom:28px;border:1px solid var(--accent-glow);
+}
+.hero-badge svg{width:14px;height:14px}
+.hero h1{
+  font-family:'Instrument Serif',serif;font-weight:400;
+  font-size:clamp(42px,7vw,64px);line-height:1.1;
+  letter-spacing:-.03em;margin-bottom:20px;
+  background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.hero p{font-size:17px;color:var(--text-2);max-width:520px;margin:0 auto;line-height:1.7}
+
+/* ── Try Now Button ────────────────────────────── */
+.try-now-wrap{margin-top:36px;display:flex;justify-content:center}
+.try-now-btn{
+  position:relative;overflow:hidden;
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:0 40px;height:54px;border-radius:100px;
+  background:var(--gradient);
+  color:#fff;text-decoration:none;
+  font-size:15.5px;font-weight:600;letter-spacing:.04em;
+  box-shadow:0 4px 24px rgba(124,92,191,0.45),0 1px 3px rgba(0,0,0,0.2);
+  transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s;
+  animation:try-pulse 3s ease-in-out infinite;
+}
+.try-now-btn:hover{
+  transform:scale(1.07) translateY(-2px);
+  box-shadow:0 8px 36px rgba(124,92,191,0.60),0 2px 8px rgba(0,0,0,0.25);
+  animation:none;
+}
+.try-now-btn:active{transform:scale(0.97)}
+.try-now-label{
+  display:flex;align-items:center;gap:9px;
+  position:relative;z-index:1;
+}
+.try-now-icon{width:15px;height:15px;flex-shrink:0}
+.try-now-shine{
+  position:absolute;top:0;left:-75%;
+  width:50%;height:100%;
+  background:linear-gradient(105deg,transparent 20%,rgba(255,255,255,0.35) 50%,transparent 80%);
+  transform:skewX(-20deg);
+  animation:try-shine 3s ease-in-out infinite;
+}
+@keyframes try-shine{
+  0%,100%{left:-75%}60%{left:135%}
+}
+@keyframes try-pulse{
+  0%,100%{box-shadow:0 4px 24px rgba(124,92,191,0.45),0 1px 3px rgba(0,0,0,0.2)}
+  50%{box-shadow:0 6px 32px rgba(124,92,191,0.65),0 2px 6px rgba(0,0,0,0.22)}
+}
+
+/* ── Table of Contents ─────────────────────────── */
+.toc{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:32px 36px;margin-bottom:64px;box-shadow:var(--card-shadow);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+}
+.toc h2{font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin-bottom:20px}
+.toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.toc-grid a{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;
+  text-decoration:none;color:var(--text);font-size:14px;font-weight:500;
+  transition:all .15s;
+}
+.toc-grid a:hover{background:var(--accent-soft);color:var(--accent-text)}
+.toc-num{
+  width:26px;height:26px;border-radius:8px;
+  background:var(--gradient-subtle);color:var(--accent-text);
+  font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+
+/* ── Section ───────────────────────────────────── */
+.section{margin-bottom:72px;scroll-margin-top:80px}
+.section-header{margin-bottom:36px}
+.section-header h2{
+  font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.3;
+  margin-bottom:8px;
+}
+.section-header p{color:var(--text-2);font-size:17px}
+
+/* ── Cards ─────────────────────────────────────── */
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:28px;box-shadow:var(--card-shadow);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  transition:all .2s;
+}
+.card:hover{border-color:var(--border-strong);box-shadow:var(--card-shadow),0 0 0 1px var(--accent-glow)}
+
+.card-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.card-grid-2{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(380px,1fr))}
+
+.card-icon{
+  width:42px;height:42px;border-radius:12px;
+  background:var(--gradient-subtle);
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:16px;color:var(--accent);
+}
+.card-icon svg{width:20px;height:20px}
+.card h3{font-size:16px;font-weight:600;margin-bottom:8px;letter-spacing:-.01em}
+.card p{color:var(--text-2);font-size:16px;line-height:1.7}
+
+/* ── Steps ─────────────────────────────────────── */
+.steps{position:relative;padding-left:36px}
+.steps::before{content:'';position:absolute;left:14px;top:8px;bottom:8px;width:2px;background:var(--step-line);border-radius:2px}
+.step{position:relative;padding-bottom:28px}
+.step:last-child{padding-bottom:0}
+.step-dot{
+  position:absolute;left:-36px;top:3px;
+  width:28px;height:28px;border-radius:50%;
+  background:var(--gradient);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;
+  box-shadow:0 0 0 4px var(--bg);
+}
+.step h3{font-size:15px;font-weight:600;margin-bottom:6px}
+.step p{color:var(--text-2);font-size:14px;line-height:1.7}
+
+/* ── Feature List ──────────────────────────────── */
+.feature-list{list-style:none;display:flex;flex-direction:column;gap:12px}
+.feature-list li{
+  display:flex;gap:12px;align-items:flex-start;
+  padding:14px 18px;border-radius:12px;
+  background:var(--gradient-subtle);transition:all .15s;
+}
+.feature-list li:hover{background:var(--accent-soft)}
+.feature-bullet{
+  width:24px;height:24px;border-radius:7px;flex-shrink:0;margin-top:1px;
+  background:var(--gradient);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+}
+.feature-bullet svg{width:14px;height:14px}
+.feature-text h4{font-size:14px;font-weight:600;margin-bottom:2px}
+.feature-text p{font-size:13px;color:var(--text-2);line-height:1.6}
+
+/* ── Tags ──────────────────────────────────────── */
+.tag{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 10px;border-radius:6px;
+  background:var(--tag-bg);color:var(--tag-text);
+  font-size:12px;font-weight:600;
+}
+
+/* ── Tip/Warn Boxes ────────────────────────────── */
+.tip,.warn{
+  padding:18px 22px;border-radius:12px;margin:20px 0;
+  display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.7;
+}
+.tip{background:var(--tip-bg);border:1px solid var(--tip-border);color:var(--text)}
+.warn{background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn-text)}
+.tip svg,.warn svg{width:18px;height:18px;flex-shrink:0;margin-top:2px}
+.tip svg{color:var(--accent)}
+.warn svg{color:var(--warn-text)}
+
+/* ── Keyboard Shortcut ─────────────────────────── */
+kbd{
+  display:inline-block;padding:2px 8px;border-radius:6px;
+  background:var(--kbd-bg);border:1px solid var(--kbd-border);
+  font-family:'Noto Sans TC',monospace;font-size:12px;font-weight:600;
+  line-height:1.6;color:var(--text-2);
+}
+
+/* ── Accordion ─────────────────────────────────── */
+.accordion{border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:12px;background:var(--surface);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.accordion-trigger{
+  width:100%;padding:18px 22px;border:none;background:transparent;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  cursor:pointer;font-size:15px;font-weight:600;color:var(--text);
+  font-family:inherit;text-align:left;transition:background .15s;
+}
+.accordion-trigger:hover{background:var(--accent-soft)}
+.accordion-trigger svg{width:18px;height:18px;color:var(--text-3);transition:transform .25s cubic-bezier(.4,0,.2,1);flex-shrink:0}
+.accordion-trigger[aria-expanded="true"] svg{transform:rotate(180deg)}
+.accordion-body{
+  max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.4,0,.2,1);
+}
+.accordion-body-inner{padding:0 22px 22px;color:var(--text-2);font-size:14px;line-height:1.8}
+.accordion-body-inner p+p{margin-top:10px}
+
+/* ── Screenshot placeholder ────────────────────── */
+.screenshot{
+  border-radius:12px;border:1px solid var(--border);
+  background:var(--gradient-subtle);
+  padding:48px 24px;text-align:center;color:var(--text-3);
+  font-size:13px;margin:20px 0;
+  box-shadow:var(--img-shadow);
+}
+
+/* ── Comparison Table ──────────────────────────── */
+.compare-table{
+  width:100%;border-collapse:separate;border-spacing:0;
+  border:1px solid var(--border);border-radius:12px;overflow:hidden;
+  margin:20px 0;font-size:14px;
+}
+.compare-table th{
+  background:var(--gradient-subtle);padding:12px 18px;
+  text-align:left;font-weight:600;font-size:13px;
+  color:var(--text-2);text-transform:uppercase;letter-spacing:.04em;
+  border-bottom:1px solid var(--border);
+}
+.compare-table td{
+  padding:12px 18px;border-bottom:1px solid var(--border);
+  color:var(--text-2);
+}
+.compare-table tr:last-child td{border-bottom:none}
+.compare-table td:first-child{font-weight:500;color:var(--text)}
+
+/* ── Footer ────────────────────────────────────── */
+.footer{
+  text-align:center;padding:48px 0 64px;
+  color:var(--text-3);font-size:13px;
+  border-top:1px solid var(--border);margin-top:32px;
+}
+.footer a{color:var(--accent-text);text-decoration:none}
+.footer a:hover{text-decoration:underline}
+
+/* ── Back to Top ───────────────────────────────── */
+.back-top{
+  position:fixed;bottom:32px;right:32px;z-index:90;
+  width:44px;height:44px;border-radius:12px;border:1px solid var(--border);
+  background:var(--surface);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:var(--card-shadow);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transform:translateY(12px);transition:all .25s;color:var(--text-2);
+}
+.back-top.show{opacity:1;transform:translateY(0)}
+.back-top:hover{background:var(--accent-soft);color:var(--accent)}
+.back-top svg{width:18px;height:18px}
+
+/* ── Animations ────────────────────────────────── */
+.fade-up{opacity:0;transform:translateY(24px);transition:opacity .6s cubic-bezier(.4,0,.2,1),transform .6s cubic-bezier(.4,0,.2,1)}
+.fade-up.visible{opacity:1;transform:translateY(0)}
+
+/* ── Responsive ────────────────────────────────── */
+@media(max-width:768px){
+  .content{padding:0 20px}
+  .nav-inner{padding:0 20px}
+  .nav-links{
+    display:none;position:fixed;top:56px;left:0;right:0;
+    background:var(--nav-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    flex-direction:column;padding:16px 20px;gap:4px;
+    border-bottom:1px solid var(--border);box-shadow:var(--card-shadow);
+  }
+  .nav-links.open{display:flex}
+  .nav-toggle{display:flex}
+  .hero{padding:110px 0 60px}
+  .hero h1{font-size:36px}
+  .card-grid,.card-grid-2{grid-template-columns:1fr}
+  .toc-grid{grid-template-columns:1fr}
+  .toc{padding:24px}
+  .section{margin-bottom:52px}
+}
+@media(max-width:480px){
+  .hero h1{font-size:30px}
+  .hero p{font-size:15px}
+  .section-header h2{font-size:24px}
+  .card{padding:22px}
+}
+</style>
+</head>
+<body>
+
+<!-- Aurora WebGL Background -->
+<canvas id="aurora-canvas"></canvas>
+
+<!-- Progress Bar -->
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- Navigation -->
+<nav class="top-nav" id="topNav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      AI Gateway 使用指南
+    </div>
+    <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Toggle navigation">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="nav-links" id="navLinks">
+      <a href="#start" onclick="closeNav()">開始使用</a>
+      <a href="#chat" onclick="closeNav()">對話</a>
+      <a href="#features" onclick="closeNav()">功能</a>
+      <a href="#projects" onclick="closeNav()">專案</a>
+      <a href="#settings" onclick="closeNav()">設定</a>
+      <a href="#admin" onclick="closeNav()">管理</a>
+      <a href="#faq" onclick="closeNav()">常見問題</a>
+      
+    </div>
+  </div>
+</nav>
+
+<div class="content">
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- Hero -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="hero fade-up">
+
+  <h1>AI Gateway<br>使用指南</h1>
+  <p>整合 OpenAI GPT 與 Google Gemini 的企業級 AI 應用平台。<br>從註冊到進階功能，完整解析，快速上手。</p>
+  <div class="try-now-wrap">
+    <a href="http://192.168.0.32" target="_blank" rel="noopener" class="try-now-btn">
+      <span class="try-now-shine"></span>
+      <span class="try-now-label">
+        Get Started
+      </span>
+    </a>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- Table of Contents -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="toc fade-up">
+  <h2>目錄</h2>
+  <div class="toc-grid">
+    <a href="#start"><span class="toc-num">1</span>帳號與登入</a>
+    <a href="#chat"><span class="toc-num">2</span>AI 對話</a>
+    <a href="#file"><span class="toc-num">3</span>檔案與圖像</a>
+    <a href="#features"><span class="toc-num">4</span>進階功能</a>
+    <a href="#projects"><span class="toc-num">5</span>專案管理</a>
+    <a href="#settings"><span class="toc-num">6</span>個人設定</a>
+    <a href="#admin"><span class="toc-num">7</span>管理後台</a>
+    <a href="#faq"><span class="toc-num">8</span>常見問題</a>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- 1. 帳號與登入 -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="section fade-up" id="start">
+  <div class="section-header">
+    <h2>1. 帳號與登入</h2>
+    <p>使用公司信箱註冊，完成 Email 驗證即可開始使用。</p>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <span class="step-dot">1</span>
+      <h3>註冊帳號</h3>
+      <p>前往登入頁面，點選「註冊」分頁。輸入使用者名稱、公司信箱（@ystravel.com.tw）及密碼。密碼需包含大小寫字母、數字與特殊符號，長度至少 8 碼。</p>
+    </div>
+    <div class="step">
+      <span class="step-dot">2</span>
+      <h3>Email 驗證</h3>
+      <p>註冊後系統會發送驗證信至你的信箱，點擊信中連結完成驗證。驗證連結有效期為 <strong>24 小時</strong>，過期需重新註冊。</p>
+    </div>
+    <div class="step">
+      <span class="step-dot">3</span>
+      <h3>登入系統</h3>
+      <p>註冊完畢後回到登入表單，輸入註冊好的用戶名稱及密碼即可登入</p>
+    </div>
+    <div class="step">
+      <span class="step-dot">4</span>
+      <h3>開始對話</h3>
+      <p>登入後進入主畫面，即可在輸入框輸入問題開始與 AI 對話。</p>
+    </div>
+  </div>
+
+  <div class="tip">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    <div>密碼每 <strong>90 天</strong>需更換一次。系統會在到期前提醒你，請於登入頁面下方有「重設密碼」選項進行重設密碼。</div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- 2. AI 對話 -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="section fade-up" id="chat">
+  <div class="section-header">
+    <h2>2. AI 對話</h2>
+    <p>支援即時串流回覆、多模型切換、知識庫檢索與網路搜尋。</p>
+  </div>
+
+  <div class="card-grid-2" style="margin-bottom:24px">
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      </div>
+      <h3>即時串流對話</h3>
+      <p>訊息以即時串流方式逐字顯示，不需等待整段回覆完成。支援 Markdown 格式、程式碼區塊語法高亮。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      </div>
+      <h3>多模型選擇</h3>
+      <p>可在 OpenAI GPT 與 Google Gemini 之間自由切換。開啟「自動路由」後，系統會根據問題類型智慧選擇最適合的模型。</p>
+    </div>
+  </div>
+
+  <h3 style="font-size:16px;font-weight:600;margin-bottom:16px">對話操作</h3>
+  <ul class="feature-list">
+    <li>
+      <span class="feature-bullet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
+      <div class="feature-text">
+        <h4>傳送訊息</h4>
+        <p>在底部輸入框輸入文字，按下 <kbd>Enter</kbd> 或點擊傳送按鈕。換行請使用 <kbd>Shift</kbd> + <kbd>Enter</kbd>。</p>
+      </div>
+    </li>
+    <li>
+      <span class="feature-bullet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
+      <div class="feature-text">
+        <h4>新對話</h4>
+        <p>點擊左上角的「新對話」按鈕或使用快捷鍵開啟新的對話窗口。每段對話會自動依據內容生成標題。</p>
+      </div>
+    </li>
+    <li>
+      <span class="feature-bullet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
+      <div class="feature-text">
+        <h4>對話管理</h4>
+        <p>側邊欄顯示所有歷史對話。你可以重新命名、加星號（收藏）、移入專案，或刪除不需要的對話。也支援跨對話的全文搜尋。</p>
+      </div>
+    </li>
+    <li>
+      <span class="feature-bullet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
+      <div class="feature-text">
+        <h4>網路搜尋</h4>
+        <p>AI 會即時搜尋網路取得最新資訊來回答問題，適用於需要時事或即時數據的場景。</p>
+      </div>
+    </li>
+  </ul>
+
+  <div class="tip" style="margin-top:24px">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    <div>使用「Prompt 範本」功能可快速套用預設的提示語模板，省去每次重新撰寫系統指令的時間。</div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- 3. 檔案與圖像 -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="section fade-up" id="file">
+  <div class="section-header">
+    <h2>3. 檔案與圖像</h2>
+    <p>上傳文件讓 AI 閱讀分析，或使用 AI 生成圖像。</p>
+  </div>
+
+  <div class="card-grid" style="margin-bottom:28px">
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      <h3>文件上傳</h3>
+      <p>支援 PDF、Word、Excel、CSV、程式碼等格式。AI 會自動擷取文件內容並結合你的問題進行分析。單檔上限 50MB。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      </div>
+      <h3>圖片分析</h3>
+      <p>上傳圖片後，AI 可辨識並描述圖片內容（視覺分析）。支援 JPG、PNG 等常見格式，可用於圖表解讀、截圖分析等情境。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3c7.2 0 9 1.8 9 9s-1.8 9-9 9-9-1.8-9-9 1.8-9 9-9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+      </div>
+      <h3>AI 圖像生成</h3>
+      <p>使用自然語言描述你想要的圖像，AI 會為你生成。支援 OpenAI 與 Google Imagen 兩種引擎，可選擇尺寸與品質。</p>
+    </div>
+  </div>
+
+  <table class="compare-table">
+    <thead>
+      <tr><th>圖像引擎</th><th>尺寸選項</th><th>品質</th><th>數量</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>OpenAI</td><td>1024×1024、1024×1563、1563×1024</td><td>低 / 中 / 高</td><td>1-3 張</td></tr>
+      <tr><td>Google Imagen</td><td>5 種比例（1:1、3:4、4:3、9:16、16:9）</td><td>Ultra</td><td>1-3 張</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- 4. 進階功能 -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="section fade-up" id="features">
+  <div class="section-header">
+    <h2>4. 進階功能</h2>
+    <p>善用這些功能，讓 AI 更精準地為你服務。</p>
+  </div>
+
+  <div class="card-grid-2">
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+      </div>
+      <h3>RAG 知識庫</h3>
+      <p>AI 回答時會自動搜尋公司內部文件作為參考依據，附上引用來源。讓回答更準確、更貼近公司實際情境。</p>
+      <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
+        <span class="tag">人事</span>
+        <span class="tag">政策</span>
+        <span class="tag">技術</span>
+        <span class="tag">一般</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0110 10 10 10 0 01-10 10A10 10 0 012 12 10 10 0 0112 2z"/><path d="M12 6v6l4 2"/></svg>
+      </div>
+      <h3>AI 記憶</h3>
+      <p>開啟記憶功能後，AI 會自動記住你的偏好與工作背景。例如記住你的部門、常用工具、溝通風格等，讓之後的對話更個人化。你可隨時查看或刪除已儲存的記憶。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </div>
+      <h3>網路搜尋</h3>
+      <p>需要最新資訊時開啟此功能。AI 會透過搜尋引擎取得即時資料輔助回答，適合查詢新聞、天氣、匯率、法規更新等。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div>
+      <h3>Prompt 範本</h3>
+      <p>系統預設了多種提示語範本，包含翻譯、摘要、寫作等場景。選擇範本後自動填入提示語，你只需補上具體內容即可。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+      </div>
+      <h3>個人化指令</h3>
+      <p>在設定中可自訂「個人指令」，例如：「請用繁體中文回答」、「保持簡潔」。此指令會在每次對話中自動帶入，不需重複輸入。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      </div>
+      <h3>自動歷史摘要</h3>
+      <p>當對話訊息超過一定長度時，系統會自動將較早的對話內容進行摘要壓縮，確保 AI 在有限的上下文窗口內仍能掌握完整脈絡。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- 5. 專案管理 -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="section fade-up" id="projects">
+  <div class="section-header">
+    <h2>5. 專案管理</h2>
+    <p>將相關對話分組到專案中，設定專屬指令與知識庫。</p>
+  </div>
+
+  <ul class="feature-list" style="margin-bottom:24px">
+    <li>
+      <span class="feature-bullet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
+      <div class="feature-text">
+        <h4>建立專案</h4>
+        <p>在側邊欄點擊「新增專案」，為一組相關的對話建立分類。例如為不同客戶案件、部門任務各建一個專案。</p>
+      </div>
+    </li>
+    <li>
+      <span class="feature-bullet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
+      <div class="feature-text">
+        <h4>專案指令</h4>
+        <p>為每個專案設定專屬的系統指令（System Prompt），該專案下的所有對話都會自動套用。例如為翻譯專案設定「請以正式商業用語翻譯」。</p>
+      </div>
+    </li>
+    <li>
+      <span class="feature-bullet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
+      <div class="feature-text">
+        <h4>專案知識庫</h4>
+        <p>可為專案上傳私有文件（TXT、PDF、Word、Markdown、Excel、CSV），AI 在該專案的對話中會優先參考這些文件。最大 20MB/檔。</p>
+      </div>
+    </li>
+    <li>
+      <span class="feature-bullet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
+      <div class="feature-text">
+        <h4>移動對話</h4>
+        <p>任何對話都可以隨時移入或移出專案。刪除專案時，對話不會被刪除，僅解除分組關係。</p>
+      </div>
+    </li>
+  </ul>
+
+  <div class="tip">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    <div>你也可以指定專案可存取的 <strong>RAG 知識庫分類</strong>，讓 AI 在專案對話中只參考相關類別的文件，避免資訊干擾。</div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- 6. 個人設定 -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="section fade-up" id="settings">
+  <div class="section-header">
+    <h2>6. 個人設定</h2>
+    <p>調整介面外觀、AI 行為偏好與帳號安全。</p>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </div>
+      <h3>AI 模型</h3>
+      <p>選擇偏好的 AI 供應商（OpenAI / Gemini），或啟用自動路由讓系統智慧選擇。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 00-6 6c0 3 2 5.5 6 9 4-3.5 6-6 6-9a6 6 0 00-6-6z"/></svg>
+      </div>
+      <h3>外觀主題</h3>
+      <p>支援淺色與深色模式切換。可選擇多種中文字體，調整文字大小至最舒適的閱讀體驗。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+      <h3>個人指令</h3>
+      <p>設定你的工作類型與自訂指令，AI 會在每次回覆中自動參考這些偏好。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      </div>
+      <h3>帳號安全</h3>
+      <p>可隨時修改密碼。系統每 90 天要求更換密碼以確保帳號安全。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      </div>
+      <h3>功能開關</h3>
+      <p>AI 記憶、RAG知識庫、Webhook等功能，依照使用場景靈活調整。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><polyline points="21 3 21 8 16 8"/></svg>
+      </div>
+      <h3>記憶管理</h3>
+      <p>查看 AI 記住的所有關於你的資訊，可逐條刪除或一次清除，確保隱私掌控在你手中。</p>
+    </div>
+  </div>
+
+  <table class="compare-table" style="margin-top:28px">
+    <thead>
+      <tr><th>字體選項</th><th>風格</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>系統預設</td><td>使用系統內建字體</td></tr>
+      <tr><td>Noto Sans TC</td><td>清晰易讀（預設）</td></tr>
+      <tr><td>Noto Serif TC</td><td>典雅書卷</td></tr>
+      <tr><td>Iansui</td><td>手寫靜謐</td></tr>
+      <tr><td>LXGW WenKai TC</td><td>文楷溫潤</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- 7. 管理後台 -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="section fade-up" id="admin">
+  <div class="section-header">
+    <h2>7. 管理後台</h2>
+    <p>僅限管理員。提供用戶管理、用量監控與系統設定功能。</p>
+  </div>
+
+  <div class="warn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <div>管理後台僅限擁有管理員權限的帳號存取。</div>
+  </div>
+
+  <!-- Admin accordions -->
+  <div style="margin-top:20px">
+    <div class="accordion">
+      <button class="accordion-trigger" aria-expanded="false" onclick="toggleAccordion(this)">
+        用戶管理
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="accordion-body"><div class="accordion-body-inner">
+        <p><strong>用戶列表</strong> — 檢視所有註冊用戶，包含帳號、信箱、部門、啟用狀態、管理員權限。可逐一編輯或刪除。</p>
+        <p><strong>批次匯入</strong> — 下載 Excel 範本，填入用戶資料後上傳即可批次建立帳號。也支援 CSV 格式。未填密碼欄位的用戶會自動生成臨時密碼，首次登入時須更換。</p>
+        <p><strong>強制改密碼</strong> — 可強制指定用戶在下次登入時更換密碼。</p>
+      </div></div>
+    </div>
+
+    <div class="accordion">
+      <button class="accordion-trigger" aria-expanded="false" onclick="toggleAccordion(this)">
+        配額與速率限制
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="accordion-body"><div class="accordion-body-inner">
+        <p><strong>月度配額</strong> — 為每位用戶設定每月 Token 上限和費用上限。達到上限後用戶將無法發送新訊息，直到下月重置。</p>
+        <p><strong>速率限制</strong> — 預設每分鐘 5 次、每小時 60 次、每日 100 次請求。管理員可重置特定用戶的計數器。</p>
+        <p><strong>手動重置</strong> — 可隨時重置用戶的當月使用量或速率限制計數器。</p>
+      </div></div>
+    </div>
+
+    <div class="accordion">
+      <button class="accordion-trigger" aria-expanded="false" onclick="toggleAccordion(this)">
+        使用統計與費用
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="accordion-body"><div class="accordion-body-inner">
+        <p><strong>總覽儀表板</strong> — 顯示全站用戶數、對話數、訊息數、30 天費用與 API 呼叫次數。</p>
+        <p><strong>趨勢圖表</strong> — 7 天每日訊息量折線圖、模型使用分佈圓餅圖。</p>
+        <p><strong>使用日誌</strong> — 逐筆 API 呼叫記錄，含用戶、供應商、模型、Token 數與費用。</p>
+        <p><strong>部門成本分攤</strong> — 按部門彙整費用，含每位用戶明細與供應商分佈。可匯出 Excel 報表。</p>
+        <p><strong>模型效能</strong> — 各模型的請求次數、Token 消耗量與費用統計。</p>
+      </div></div>
+    </div>
+
+    <div class="accordion">
+      <button class="accordion-trigger" aria-expanded="false" onclick="toggleAccordion(this)">
+        知識庫管理
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="accordion-body"><div class="accordion-body-inner">
+        <p><strong>文件管理</strong> — 上傳文件至知識庫（PDF、Word、TXT、Markdown、Excel），也可直接貼上文字。每份文件可指定分類與標題。支援預覽、下載原始檔及刪除。</p>
+        <p><strong>分類管理</strong> — 建立與刪除知識庫分類。預設分類：人事、政策、技術、一般。含有文件的分類無法直接刪除。</p>
+        <p><strong>存取控制</strong> — 為每位用戶設定可存取的知識庫分類。未設定時預設可存取全部分類。</p>
+      </div></div>
+    </div>
+
+    <div class="accordion">
+      <button class="accordion-trigger" aria-expanded="false" onclick="toggleAccordion(this)">
+        自訂 QA 規則
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="accordion-body"><div class="accordion-body-inner">
+        <p>設定關鍵字觸發的自動回覆規則。當用戶訊息命中關鍵字時，系統直接回傳預設答案，<strong>不消耗任何 AI Token</strong>。</p>
+        <p>適合用於：常見問答（如公司 WiFi 密碼、報帳流程）、公告通知等高頻重複問題。支援正則表達式匹配，並追蹤每條規則的命中次數。</p>
+      </div></div>
+    </div>
+
+    <div class="accordion">
+      <button class="accordion-trigger" aria-expanded="false" onclick="toggleAccordion(this)">
+        其他管理功能
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="accordion-body"><div class="accordion-body-inner">
+        <p><strong>Prompt 範本管理</strong> — 建立、編輯、排序與停用提示語範本，供全公司用戶使用。</p>
+        <p><strong>API Key 管理</strong> — 建立外部 API Key 供第三方系統串接，可設定速率限制與費用上限。</p>
+        <p><strong>錯誤日誌</strong> — 檢視系統錯誤記錄，含堆疊追蹤、端點、時間戳。可標記為已解決。</p>
+        <p><strong>審計日誌</strong> — 完整的操作審計軌跡，可依操作者、動作類型、資源類型與日期範圍篩選。</p>
+        <p><strong>PII 偵測設定</strong> — 配置個資偵測規則，自動遮蔽用戶輸入中的敏感資訊。</p>
+        <p><strong>語意快取</strong> — 查看快取命中率與統計資訊，可清除快取以釋放空間。</p>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- 8. 常見問題 -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="section fade-up" id="faq">
+  <div class="section-header">
+    <h2>8. 常見問題</h2>
+  </div>
+
+  <div class="accordion">
+    <button class="accordion-trigger" aria-expanded="false" onclick="toggleAccordion(this)">
+      為什麼我的訊息無法送出？
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="accordion-body"><div class="accordion-body-inner">
+      <p>可能原因：</p>
+      <p>1. <strong>速率限制</strong> — 每分鐘最多 5 次、每小時 60 次、每日 100 次。</p>
+      <p>2. <strong>配額用盡</strong> — 當月 Token 或費用已達上限。可在設定中查看剩餘額度，或聯繫管理員重置。</p>
+      <p>3. <strong>帳號停用</strong> — 請確認信箱中的驗證信已點擊。</p>
+    </div></div>
+  </div>
+
+  <div class="accordion">
+    <button class="accordion-trigger" aria-expanded="false" onclick="toggleAccordion(this)">
+      OpenAI 和 Gemini 有什麼差異？該選哪個？
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="accordion-body"><div class="accordion-body-inner">
+      <p><strong>OpenAI GPT</strong> — 整體表現穩定，擅長程式碼生成、複雜推理與結構化輸出。</p>
+      <p><strong>Google Gemini</strong> — 回應速度較快，費用較低，擅長多語言翻譯與長文摘要。且內建 Google 搜尋能力。</p>
+      <p>建議：開啟「自動路由」讓系統根據問題類型自動選擇最合適的模型。</p>
+    </div></div>
+  </div>
+
+  <div class="accordion">
+    <button class="accordion-trigger" aria-expanded="false" onclick="toggleAccordion(this)">
+      知識庫回答不準確怎麼辦？
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="accordion-body"><div class="accordion-body-inner">
+      <p>1. 確認問題與知識庫中的文件內容<strong>語義相關</strong>，而非僅靠關鍵字匹配。</p>
+      <p>2. 檢查文件是否已歸入正確的<strong>分類</strong>，且你的帳號擁有該分類的存取權限。</p>
+      <p>3. 若使用專案知識庫，確認文件已上傳至<strong>對應的專案</strong>中。</p>
+      <p>4. 聯繫管理員確認知識庫文件是否已正確向量化。</p>
+    </div></div>
+  </div>
+
+  <div class="accordion">
+    <button class="accordion-trigger" aria-expanded="false" onclick="toggleAccordion(this)">
+      AI 記憶功能會記錄什麼？我的隱私安全嗎？
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="accordion-body"><div class="accordion-body-inner">
+      <p>AI 記憶僅記錄你在對話中<strong>明確表達的偏好與背景資訊</strong>（例如：部門、職稱、常用工具等），不會記錄對話的完整內容。</p>
+      <p>你可以隨時在設定中<strong>查看所有記憶內容</strong>、逐條刪除或完全停用記憶功能。系統也啟用了 <strong>PII 偵測</strong>，會自動遮蔽身分證號、電話等敏感資訊。</p>
+    </div></div>
+  </div>
+
+  <div class="accordion">
+    <button class="accordion-trigger" aria-expanded="false" onclick="toggleAccordion(this)">
+      如何查看我的使用量和剩餘額度？
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="accordion-body"><div class="accordion-body-inner">
+      <p>在主介面的設定面板中可以查看：</p>
+      <p>1. <strong>配額狀態</strong> — 當月已使用的 Token 數及百分比剩餘額度。</p>
+      <p>2. <strong>速率狀態</strong> — 當前各時段（分鐘/小時/日）的剩餘請求次數。</p>
+      <p>管理員可在後台為你調整配額或重置計數器。</p>
+    </div></div>
+  </div>
+
+  <div class="accordion">
+    <button class="accordion-trigger" aria-expanded="false" onclick="toggleAccordion(this)">
+      忘記密碼怎麼辦？
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="accordion-body"><div class="accordion-body-inner">
+      <p>在登入頁面點擊「忘記密碼」連結，輸入你的註冊信箱。系統會發送重設密碼的連結至信箱，連結有效期為 <strong>30 分鐘</strong>。</p>
+    </div></div>
+  </div>
+  
+    <div class="accordion">
+    <button class="accordion-trigger" aria-expanded="false" onclick="toggleAccordion(this)">
+      AI訊息回覆很慢？
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="accordion-body"><div class="accordion-body-inner">
+      <p>訊息回覆速度取決於當前供應商API負載工作量及問題的複雜程度和當下的網路流量，問題越複雜、回答越長，就需要越多時間思考。這是正常現象，而非系統故障。 <strong>若回覆訊息中有提示明確問題說明請聯繫 IT 部門</strong>。</p>
+    </div></div>
+  </div>
+  
+  <div class="accordion">
+  <button class="accordion-trigger" aria-expanded="false" onclick="toggleAccordion(this)">
+    AI Gateway  vs  ChatGPT / Gemini 有何差異？
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  </button>
+
+  <div class="accordion-body">
+    <div class="accordion-body-inner">
+
+      <table style="width:100%; border-collapse: collapse; margin-top:12px; font-size:14px;">
+        <thead>
+          <tr>
+            <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border-strong);">項目</th>
+            <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border-strong);">AI Gateway</th>
+            <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border-strong);">ChatGPT / Gemini</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">使用方式</td>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">企業系統整合 / API</td>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">瀏覽器直接使用</td>
+          </tr>
+          <tr>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">模型選擇</td>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">多模型（GPT / Gemini）</td>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">單一平台</td>
+          </tr>
+          <tr>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">自動路由</td>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">支援</td>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">不支援</td>
+          </tr>
+          <tr>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">知識庫 (RAG)</td>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">企業內部資料整合</td>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">有限</td>
+          </tr>
+          <tr>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">使用者管理</td>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">支援</td>
+            <td style="padding:10px; border-bottom:1px solid var(--border);">不支援</td>
+          </tr>
+          <tr>
+            <td style="padding:10px;">適用對象</td>
+            <td style="padding:10px;">企業 / 團隊</td>
+            <td style="padding:10px;">個人使用者</td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- Footer -->
+<footer class="footer fade-up">
+  <p>AI Gateway · AI API Gateway v2.2.7</p>
+  <p style="margin-top:6px">如有疑問請聯繫 IT 部門</p>
+</footer>
+
+</div><!-- .content -->
+
+<!-- Back to top -->
+<button class="back-top" id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="回到頂部">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+</button>
+
+<script>
+
+/* ── Accordion ──────────────────────────────────── */
+function toggleAccordion(btn) {
+  const expanded = btn.getAttribute('aria-expanded') === 'true';
+  const body = btn.nextElementSibling;
+  if (expanded) {
+    btn.setAttribute('aria-expanded', 'false');
+    body.style.maxHeight = '0';
+  } else {
+    btn.setAttribute('aria-expanded', 'true');
+    body.style.maxHeight = body.scrollHeight + 'px';
+  }
+}
+
+/* ── Mobile nav close ───────────────────────────── */
+function closeNav() {
+  document.getElementById('navLinks').classList.remove('open');
+}
+
+/* ── Scroll: progress bar, back-top, nav hide ───── */
+let lastY = 0;
+window.addEventListener('scroll', () => {
+  const y = window.scrollY;
+  const h = document.documentElement.scrollHeight - window.innerHeight;
+  // Progress
+  document.getElementById('progressBar').style.width = (h > 0 ? (y / h) * 100 : 0) + '%';
+  // Back to top
+  document.getElementById('backTop').classList.toggle('show', y > 400);
+  // Nav hide/show
+  const nav = document.getElementById('topNav');
+  if (y > 120 && y > lastY) nav.classList.add('hidden');
+  else nav.classList.remove('hidden');
+  lastY = y;
+}, { passive: true });
+
+/* ── Scroll: active nav link ────────────────────── */
+const sections = document.querySelectorAll('.section, .hero');
+const navLinks = document.querySelectorAll('.nav-links a[href^="#"]');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(a => a.classList.remove('active'));
+      const id = e.target.id;
+      if (id) {
+        const match = document.querySelector(`.nav-links a[href="#${id}"]`);
+        if (match) match.classList.add('active');
+      }
+    }
+  });
+}, { rootMargin: '-40% 0px -55% 0px' });
+sections.forEach(s => { if (s.id) observer.observe(s); });
+
+/* ── Fade-in on scroll ──────────────────────────── */
+const fadeObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      fadeObserver.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.08 });
+document.querySelectorAll('.fade-up').forEach(el => fadeObserver.observe(el));
+
+/* ── Aurora WebGL ───────────────────────────────── */
+(function(){
+  var canvas=document.getElementById('aurora-canvas');
+  var gl=canvas.getContext('webgl');
+  if(!gl)return;
+
+  var VERT=`attribute vec2 a_pos;void main(){gl_Position=vec4(a_pos,0.,1.);}`;
+
+  var FRAG=`
+    precision highp float;
+    uniform float u_t;
+    uniform vec2  u_res;
+
+    vec3 permute(vec3 x){return mod(((x*34.)+1.)*x,289.);}
+    float snoise(vec2 v){
+      const vec4 C=vec4(.211324865,.366025403,-.577350269,.024390243);
+      vec2 i=floor(v+dot(v,C.yy));
+      vec2 x0=v-i+dot(i,C.xx);
+      vec2 i1=(x0.x>x0.y)?vec2(1.,0.):vec2(0.,1.);
+      vec4 x12=x0.xyxy+C.xxzz;x12.xy-=i1;
+      i=mod(i,289.);
+      vec3 p=permute(permute(i.y+vec3(0.,i1.y,1.))+i.x+vec3(0.,i1.x,1.));
+      vec3 m=max(.5-vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.);
+      m=m*m*m*m;
+      vec3 x=2.*fract(p*C.www)-1.;
+      vec3 h=abs(x)-.5;
+      vec3 ox=floor(x+.5);
+      vec3 a0=x-ox;
+      m*=1.79284291-.85373472*(a0*a0+h*h);
+      vec3 g;
+      g.x=a0.x*x0.x+h.x*x0.y;
+      g.yz=a0.yz*x12.xz+h.yz*x12.yw;
+      return 130.*dot(m,g);
+    }
+    float fbm(vec2 p){
+      float v=0.,a=.5;
+      for(int i=0;i<3;i++){v+=a*snoise(p);p=p*2.1+vec2(1.7,9.2);a*=.5;}
+      return v;
+    }
+    float gauss(float x,float s){return exp(-x*x/(2.*s*s));}
+
+    vec3 ribbon(vec2 uv,vec2 axis,float offset,float width,
+                float wAmt,float wFreq,float wSpd,
+                vec3 col,float bright,float T){
+      vec2 perp=vec2(-axis.y,axis.x);
+      float d=dot(uv-vec2(.5),perp)-offset;
+      float along=dot(uv,axis);
+      d-=fbm(vec2(along*wFreq,T*wSpd))*wAmt;
+      float r=gauss(d,width);
+      float lc=dot(uv-vec2(.5),axis);
+      r*=smoothstep(.85,.38,abs(lc));
+      r*=.75+.25*snoise(vec2(along*3.5,T*.15));
+      return col*r*bright;
+    }
+
+    void main(){
+      vec2 uv=gl_FragCoord.xy/u_res;
+      vec2 ar=uv; ar.x*=u_res.x/u_res.y;
+      float T=u_t*.018;
+      vec3 col=vec3(.028,.028,.038);
+      col+=ribbon(ar,normalize(vec2(1.8,.55)),-.06,.048,.055,2.2,.35,vec3(.18,.72,.82),.22,T);
+      col+=ribbon(ar,normalize(vec2(1.5,.30)),.10,.032,.045,1.8,.28,vec3(.32,.42,.88),.14,T+1.7);
+      col+=ribbon(ar,normalize(vec2(2.0,.80)),-.22,.022,.035,2.8,.22,vec3(.20,.80,.65),.085,T*.7+3.3);
+      float cg=gauss(uv.x-.50,.28)*gauss(uv.y-.52,.32);
+      col+=vec3(.04,.06,.10)*cg*.75;
+      vec2 vig=uv-.5;
+      col*=pow(clamp(1.-dot(vig,vig)*2.2,0.,1.),.75);
+      col+=(snoise(gl_FragCoord.xy*.8+u_t*23.)-.5)*.016;
+      gl_FragColor=vec4(clamp(col,0.,1.),1.);
+    }
+  `;
+
+  function mkShader(type,src){
+    var s=gl.createShader(type);
+    gl.shaderSource(s,src);gl.compileShader(s);return s;
+  }
+  var prog=gl.createProgram();
+  gl.attachShader(prog,mkShader(gl.VERTEX_SHADER,VERT));
+  gl.attachShader(prog,mkShader(gl.FRAGMENT_SHADER,FRAG));
+  gl.linkProgram(prog);gl.useProgram(prog);
+
+  var buf=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+  var loc=gl.getAttribLocation(prog,'a_pos');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+
+  var uT=gl.getUniformLocation(prog,'u_t');
+  var uR=gl.getUniformLocation(prog,'u_res');
+
+  function resize(){
+    var dpr=Math.min(devicePixelRatio,2);
+    canvas.width=canvas.clientWidth*dpr;
+    canvas.height=canvas.clientHeight*dpr;
+    gl.viewport(0,0,canvas.width,canvas.height);
+  }
+  window.addEventListener('resize',resize);resize();
+
+  function isDark(){return document.documentElement.getAttribute('data-theme')==='dark';}
+
+  var t=0;
+  function frame(){
+    t++;
+    if(isDark()){
+      gl.uniform1f(uT,t);gl.uniform2f(uR,canvas.width,canvas.height);
+      gl.drawArrays(gl.TRIANGLES,0,6);
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(function(){
+    if(isDark())canvas.classList.add('ready');
+    frame();
+  });
+
+  /* Hook toggleTheme to sync canvas visibility */
+  var _orig=window.toggleTheme;
+  window.toggleTheme=function(){
+    if(_orig)_orig();
+    setTimeout(function(){
+      if(isDark())canvas.classList.add('ready');
+      else canvas.classList.remove('ready');
+    },50);
+  };
+})();
+</script>
+
+</body>
+</html>
