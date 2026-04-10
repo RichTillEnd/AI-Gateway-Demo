@@ -1,0 +1,12 @@
+{
+  "enabled": true,
+  "action": "block",
+  "categories": [
+    "tw_id",
+    "credit_card",
+    "tw_mobile",
+    "email"
+  ],
+  "block_message": "您的訊息包含敏感個人資訊，基於資安政策已被攔截。請移除個資後重新傳送。",
+  "log_detections": false
+}

@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Gateway</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:,">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --glass-bg: rgba(255,255,255,0.68);
+            --glass-border: rgba(255,255,255,0.75);
+            --text: #1a1a2e;
+            --text-2: #4a4a6a;
+            --text-3: #566683;
+            --accent: #5b6ef5;
+            --error: #e05c7a;
+            --radius: 18px;
+            --radius-sm: 10px;
+        }
+
+        html, body { min-height: 100%; }
+
+        body {
+            font-family: 'Instrument Sans', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            background: #e8e4f8;
+        }
+
+        /* ── Aurora WebGL Canvas ─────────────────── */
+        #aurora-canvas {
+            position: fixed; inset: 0; z-index: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 2s ease;
+        }
+        #aurora-canvas.ready { opacity: 1; }
+
+        /* ── Theme toggle ── */
+        .theme-toggle {
+            position: fixed;
+            top: 20px; right: 20px;
+            z-index: 100;
+            background: rgba(255,255,255,0.55);
+            border: 1px solid rgba(255,255,255,0.8);
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 2px 12px rgba(90,70,160,0.12);
+            transition: transform 0.2s;
+        }
+        .theme-toggle:hover { transform: scale(1.08); }
+
+        /* ── Card ── */
+        .wrap {
+            position: relative; z-index: 10;
+            width: 100%; max-width: 420px;
+            padding: 20px;
+        }
+        .card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: 40px 38px 36px;
+            backdrop-filter: blur(32px) saturate(180%);
+            -webkit-backdrop-filter: blur(32px) saturate(180%);
+            box-shadow:
+                0 2px 0 rgba(255,255,255,0.9) inset,
+                0 -1px 0 rgba(0,0,0,0.04) inset,
+                0 32px 80px rgba(90,70,160,0.16),
+                0 8px 24px rgba(90,70,160,0.08);
+            animation: cardIn 0.9s cubic-bezier(0.16,1,0.3,1) both;
+        }
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(28px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ── Logo ── */
+        .logo {
+            text-align: center;
+            margin-bottom: 28px;
+            animation: fadeUp 0.6s 0.15s ease both;
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .logo img {
+            height: 48px;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 2px 8px rgba(90,70,160,0.15));
+        }
+        .logo p {
+            font-size: 13px;
+            color: var(--text-3);
+        }
+
+        /* ── Verification message ── */
+        #verificationMessage {
+            display: none;
+            padding: 12px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            margin-bottom: 16px;
+            text-align: center;
+            backdrop-filter: blur(8px);
+        }
+
+        /* ── Tabs ── */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            background: rgba(255,255,255,0.5);
+            border: 1px solid rgba(255,255,255,0.7);
+            border-radius: 12px;
+            margin-bottom: 28px;
+            animation: fadeUp 0.6s 0.2s ease both;
+        }
+        .tab {
+            flex: 1;
+            padding: 8px 12px;
+            background: none;
+            border: none;
+            border-radius: 9px;
+            font-family: 'Instrument Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--text-3);
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
+        }
+        .tab.active {
+            background: rgba(255,255,255,0.92);
+            color: var(--text);
+            font-weight: 500;
+            box-shadow: 0 1px 6px rgba(90,70,160,0.12), 0 1px 0 rgba(255,255,255,1) inset;
+        }
+
+        /* ── Forms ── */
+        .form-section { display: none; }
+        .form-section.active {
+            display: block;
+            animation: fadeUp 0.35s ease both;
+        }
+        .form-group { margin-bottom: 16px; }
+        label {
+            display: block;
+            font-size: 12px; font-weight: 500;
+            color: var(--text-2);
+            margin-bottom: 6px;
+            letter-spacing: 0.02em;
+        }
+        input {
+            width: 100%; height: 44px;
+            padding: 0 14px;
+            background: rgba(255,255,255,0.6);
+            border: 1px solid rgba(255,255,255,0.85);
+            border-radius: var(--radius-sm);
+            font-family: 'Instrument Sans', sans-serif;
+            font-size: 14px; color: var(--text);
+            outline: none;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset, 0 2px 6px rgba(90,70,160,0.06);
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+        input::placeholder { color: var(--text-3); }
+        input:focus {
+            background: rgba(255,255,255,0.82);
+            border-color: rgba(129,140,248,0.6);
+            box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset, 0 0 0 3px rgba(129,140,248,0.15), 0 2px 8px rgba(90,70,160,0.1);
+        }
+
+        /* hint text */
+        .field-hint {
+            font-size: 11.5px;
+            color: var(--text-3);
+            margin-top: 5px;
+            display: block;
+        }
+
+        /* forgot password link */
+        .forgot-link {
+            text-align: right;
+            margin-bottom: 14px;
+            margin-top: -6px;
+        }
+        .forgot-link a {
+            font-size: 12.5px;
+            color: var(--accent);
+            text-decoration: none;
+            opacity: 0.85;
+            transition: opacity 0.2s;
+        }
+        .forgot-link a:hover { opacity: 1; }
+
+        /* ── Error ── */
+        .error-message {
+            display: none;
+            font-size: 12px; color: var(--error);
+            margin-top: 10px;
+            padding: 9px 12px;
+            background: rgba(224,92,122,0.08);
+            border-radius: 8px;
+            border: 1px solid rgba(224,92,122,0.15);
+        }
+        .error-message.show { display: block; }
+
+        /* ── Submit ── */
+        .submit-btn {
+            width: 100%; height: 44px;
+            margin-top: 8px;
+            background: linear-gradient(135deg, #818cf8 0%, #a855f7 100%);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: 'Instrument Sans', sans-serif;
+            font-size: 14px; font-weight: 500;
+            cursor: pointer;
+            position: relative; overflow: hidden;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset, 0 6px 20px rgba(129,140,248,0.38);
+            transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+        }
+        .submit-btn::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+            pointer-events: none;
+        }
+        .submit-btn:hover:not(:disabled) {
+            filter: brightness(1.06);
+            box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset, 0 10px 28px rgba(129,140,248,0.48);
+            transform: translateY(-1px);
+        }
+        .submit-btn:active:not(:disabled) { transform: scale(0.985) translateY(0); }
+        .submit-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .loading {
+            display: inline-block;
+            width: 15px; height: 15px;
+            border: 1.5px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── LOGO: transparent PNG, always light-mode appearance ── */
+        .sidebar-logo,
+        .auth-logo,
+        img[alt="AI Gateway"] {
+            filter: none;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="aurora-canvas"></canvas>
+
+<div class="wrap">
+    <div class="card">
+
+        <div class="logo">
+            <div style="font-size:2rem;font-weight:700;letter-spacing:-0.5px;">AI Gateway</div>
+            <p>企業智慧 一站整合</p>
+        </div>
+
+        <div id="verificationMessage"></div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('login', this)">登入</button>
+            <button class="tab" onclick="switchTab('register', this)">註冊</button>
+        </div>
+
+        <!-- 登入表單 -->
+        <form class="form-section active" id="loginForm">
+            <div class="form-group">
+                <label for="login-username">使用者名稱</label>
+                <input type="text" id="login-username" required>
+            </div>
+            <div class="form-group">
+                <label for="login-password">密碼</label>
+                <input type="password" id="login-password" required>
+            </div>
+            <div class="forgot-link">
+                <a href="/forgot-password.html">重設密碼</a>
+            </div>
+            <div class="error-message" id="login-error"></div>
+            <button type="submit" class="submit-btn" id="login-btn">登入</button>
+        </form>
+
+        <!-- 註冊表單 -->
+        <form class="form-section" id="registerForm">
+            <div class="form-group">
+                <label for="register-username">使用者名稱</label>
+                <input type="text" id="register-username" required placeholder="3-20 個英文或數字">
+            </div>
+            <div class="form-group">
+                <label for="register-email">Email</label>
+                <input type="email" id="register-email" required placeholder="your@email.com">
+            </div>
+            <div class="form-group">
+                <label for="register-password">密碼</label>
+                <input type="password" id="register-password" required placeholder="至少 8 字元，含大小寫字母和數字">
+            </div>
+            <div class="form-group">
+                <label for="register-fullname">姓名</label>
+                <input type="text" id="register-fullname">
+            </div>
+            <div class="form-group">
+                <label for="register-department">部門</label>
+                <input type="text" id="register-department">
+            </div>
+            <div class="error-message" id="register-error"></div>
+            <button type="submit" class="submit-btn" id="register-btn">註冊</button>
+        </form>
+
+    </div>
+</div>
+
+<script>
+// 檢查 URL 參數是否有驗證狀態
+        const urlParams = new URLSearchParams(window.location.search);
+        const verified = urlParams.get('verified');
+        
+        if (verified === 'success') {
+            const msgEl = document.getElementById('verificationMessage');
+            msgEl.style.display = 'block';
+            msgEl.style.background = '#d1fae5';
+            msgEl.style.color = '#065f46';
+            msgEl.style.border = '1px solid #10b981';
+            msgEl.innerHTML = '✅ <strong>Email 驗證成功！</strong><br>您的帳號已啟用，現在可以登入了。';
+            
+            // 3秒後清除 URL 參數
+            setTimeout(() => {
+                window.history.replaceState({}, document.title, '/login.html');
+            }, 3000);
+        } else if (verified === 'already') {
+            const msgEl = document.getElementById('verificationMessage');
+            msgEl.style.display = 'block';
+            msgEl.style.background = '#e0e7ff';
+            msgEl.style.color = '#3730a3';
+            msgEl.style.border = '1px solid #6366f1';
+            msgEl.innerHTML = 'ℹ️ <strong>此帳號已經驗證過了</strong><br>請直接登入。';
+            
+            setTimeout(() => {
+                window.history.replaceState({}, document.title, '/login.html');
+            }, 3000);
+        }
+
+        // 切換登入/註冊頁籤
+        function switchTab(tab, el) {
+            // 更新頁籤樣式
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            if (el) el.classList.add('active');
+
+            // 顯示對應表單
+            document.querySelectorAll('.form-section').forEach(f => f.classList.remove('active'));
+            document.getElementById(tab + 'Form').classList.add('active');
+
+            // 清除錯誤訊息
+            document.querySelectorAll('.error-message').forEach(e => e.classList.remove('show'));
+        }
+
+        // 顯示錯誤訊息
+        function showError(elementId, message) {
+            const errorEl = document.getElementById(elementId);
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+        }
+
+        // 隱藏錯誤訊息
+        function hideError(elementId) {
+            document.getElementById(elementId).classList.remove('show');
+        }
+
+        // 登入表單提交
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideError('login-error');
+
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+            const btn = document.getElementById('login-btn');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>';
+
+            try {
+                const response = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                // 安全解析 JSON（伺服器錯誤時可能回傳 HTML）
+                let data;
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    console.error('伺服器回傳非 JSON 內容：', text);
+                    throw new Error(`伺服器錯誤（HTTP ${response.status}），請聯絡 IT 部門`);
+                }
+
+                if (!response.ok) {
+                    // 檢查是否需要強制更換密碼
+                    if (data.detail && data.detail.startsWith('PASSWORD_EXPIRED')) {
+                        const days = parseInt(data.detail.split(':')[1]);
+                        const message = days < 0 
+                            ? `您的密碼已過期 ${Math.abs(days)} 天，請立即更換密碼。`
+                            : '首次登入需要更換密碼，請設定您的新密碼。';
+                        
+                        showModal('🔐', '密碼需要更換', message, () => {
+                            window.location.href = `/forgot-password.html?username=${encodeURIComponent(username)}`;
+                        });
+                        return;
+                    }
+                    
+                    throw new Error(data.detail || '登入失敗');
+                }
+
+                // 儲存 token
+                localStorage.setItem('token', data.access_token);
+
+                // 密碼即將過期提醒
+                if (data.password_warning) {
+                    showModal('⚠️', '密碼即將過期', data.password_warning.message, () => {
+                        window.location.href = '/';
+                    });
+                    return;
+                }
+
+                // 跳轉到聊天頁面
+                window.location.href = '/';
+
+            } catch (error) {
+                showError('login-error', error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '登入';
+            }
+        });
+
+        // 註冊表單提交
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideError('register-error');
+
+            const username = document.getElementById('register-username').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const full_name = document.getElementById('register-fullname').value;
+            const department = document.getElementById('register-department').value;
+            const btn = document.getElementById('register-btn');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>';
+
+            try {
+		    const response = await fetch(`${API_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username,
+                        email,
+                        password,
+                        full_name: full_name || null,
+                        department: department || null
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || '註冊失敗');
+                }
+
+                // 註冊成功，提示檢查 Email
+                showModal('✅', '註冊成功', '已發送驗證郵件到您的信箱，\n請點擊郵件中的連結啟用帳號。\n\n驗證連結 24 小時內有效。');
+
+                // 切換到登入頁籤
+                const loginTab = document.querySelector('.tab:first-child');
+                switchTab('login', loginTab);
+
+            } catch (error) {
+                showError('register-error', error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '註冊';
+            }
+        });
+
+        // ── Custom Modal（取代瀏覽器 alert） ──
+        function showModal(icon, title, message, onClose) {
+            const existing = document.getElementById('custom-modal-overlay');
+            if (existing) existing.remove();
+
+            const overlay = document.createElement('div');
+            overlay.id = 'custom-modal-overlay';
+            Object.assign(overlay.style, {
+                position:'fixed', inset:'0', zIndex:'9999',
+                background:'rgba(100,90,140,0.35)',
+                backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                animation:'modalFadeIn .25s ease'
+            });
+
+            const card = document.createElement('div');
+            Object.assign(card.style, {
+                background:'rgba(255,255,255,0.88)',
+                border:'1px solid rgba(255,255,255,0.85)',
+                borderRadius:'16px', padding:'32px 30px 26px',
+                maxWidth:'380px', width:'90%',
+                backdropFilter:'blur(24px) saturate(180%)',
+                WebkitBackdropFilter:'blur(24px) saturate(180%)',
+                boxShadow:'0 2px 0 rgba(255,255,255,0.9) inset, 0 24px 64px rgba(90,70,160,0.18)',
+                textAlign:'center',
+                animation:'modalSlideIn .3s cubic-bezier(0.16,1,0.3,1)'
+            });
+
+            card.innerHTML = `
+                <div style="font-size:36px;margin-bottom:12px;">${icon}</div>
+                <div style="font-family:'Instrument Sans',sans-serif;font-size:16px;font-weight:600;color:#1a1a2e;margin-bottom:10px;">${title}</div>
+                <div style="font-family:'Instrument Sans',sans-serif;font-size:13.5px;color:#4a4a6a;line-height:1.7;margin-bottom:22px;white-space:pre-line;">${message}</div>
+                <button id="modal-ok-btn" style="
+                    font-family:'Instrument Sans',sans-serif;
+                    width:100%; padding:10px 0; border:none; border-radius:10px;
+                    background:linear-gradient(135deg,#5b6ef5,#7c6cf5);
+                    color:#fff; font-size:14px; font-weight:500;
+                    cursor:pointer; transition:transform .15s, box-shadow .15s;
+                    box-shadow:0 4px 16px rgba(91,110,245,0.3);
+                ">確認</button>
+            `;
+
+            overlay.appendChild(card);
+            document.body.appendChild(overlay);
+
+            // 加入動畫 keyframes（只加一次）
+            if (!document.getElementById('modal-keyframes')) {
+                const style = document.createElement('style');
+                style.id = 'modal-keyframes';
+                style.textContent = `
+                    @keyframes modalFadeIn { from{opacity:0} to{opacity:1} }
+                    @keyframes modalSlideIn { from{opacity:0;transform:translateY(16px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+                `;
+                document.head.appendChild(style);
+            }
+
+            const btn = document.getElementById('modal-ok-btn');
+            btn.addEventListener('mouseenter', () => { btn.style.transform='scale(1.02)'; });
+            btn.addEventListener('mouseleave', () => { btn.style.transform='scale(1)'; });
+
+            const close = () => {
+                overlay.style.animation = 'modalFadeIn .2s ease reverse';
+                setTimeout(() => { overlay.remove(); if (onClose) onClose(); }, 180);
+            };
+
+            btn.addEventListener('click', close);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+        }
+
+        /* ── Aurora WebGL Background ─────────────────────── */
+        (function(){
+            var canvas = document.getElementById('aurora-canvas');
+            var gl = canvas.getContext('webgl');
+            if (!gl) return;
+
+            var VERT = `attribute vec2 a_pos; void main(){ gl_Position=vec4(a_pos,0.,1.); }`;
+
+            var FRAG = `
+                precision highp float;
+                uniform float u_t;
+                uniform vec2  u_res;
+
+                vec3 permute(vec3 x){return mod(((x*34.)+1.)*x,289.);}
+                float snoise(vec2 v){
+                    const vec4 C=vec4(.211324865,.366025403,-.577350269,.024390243);
+                    vec2 i=floor(v+dot(v,C.yy));
+                    vec2 x0=v-i+dot(i,C.xx);
+                    vec2 i1=(x0.x>x0.y)?vec2(1.,0.):vec2(0.,1.);
+                    vec4 x12=x0.xyxy+C.xxzz;x12.xy-=i1;
+                    i=mod(i,289.);
+                    vec3 p=permute(permute(i.y+vec3(0.,i1.y,1.))+i.x+vec3(0.,i1.x,1.));
+                    vec3 m=max(.5-vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.);
+                    m=m*m*m*m;
+                    vec3 x=2.*fract(p*C.www)-1.;
+                    vec3 h=abs(x)-.5;
+                    vec3 ox=floor(x+.5);
+                    vec3 a0=x-ox;
+                    m*=1.79284291-.85373472*(a0*a0+h*h);
+                    vec3 g;
+                    g.x=a0.x*x0.x+h.x*x0.y;
+                    g.yz=a0.yz*x12.xz+h.yz*x12.yw;
+                    return 130.*dot(m,g);
+                }
+                float fbm(vec2 p){
+                    float v=0.,a=.5;
+                    for(int i=0;i<3;i++){v+=a*snoise(p);p=p*2.1+vec2(1.7,9.2);a*=.5;}
+                    return v;
+                }
+                float gauss(float x,float s){return exp(-x*x/(2.*s*s));}
+                vec3 ribbon(vec2 uv,vec2 axis,float offset,float width,
+                            float wAmt,float wFreq,float wSpd,
+                            vec3 col,float bright,float T){
+                    vec2 perp=vec2(-axis.y,axis.x);
+                    float d=dot(uv-vec2(.5),perp)-offset;
+                    float along=dot(uv,axis);
+                    d-=fbm(vec2(along*wFreq,T*wSpd))*wAmt;
+                    float r=gauss(d,width);
+                    float lc=dot(uv-vec2(.5),axis);
+                    r*=smoothstep(.85,.38,abs(lc));
+                    r*=.75+.25*snoise(vec2(along*3.5,T*.15));
+                    return col*r*bright;
+                }
+                void main(){
+                    vec2 uv=gl_FragCoord.xy/u_res;
+                    vec2 ar=uv; ar.x*=u_res.x/u_res.y;
+                    float T=u_t*.018;
+                    vec3 col=vec3(.028,.028,.038);
+                    col+=ribbon(ar,normalize(vec2(1.8,.55)),-.06,.048,.055,2.2,.35,vec3(.18,.72,.82),.22,T);
+                    col+=ribbon(ar,normalize(vec2(1.5,.30)),.10,.032,.045,1.8,.28,vec3(.32,.42,.88),.14,T+1.7);
+                    col+=ribbon(ar,normalize(vec2(2.0,.80)),-.22,.022,.035,2.8,.22,vec3(.20,.80,.65),.085,T*.7+3.3);
+                    float cg=gauss(uv.x-.50,.28)*gauss(uv.y-.52,.32);
+                    col+=vec3(.04,.06,.10)*cg*.75;
+                    vec2 vig=uv-.5;
+                    col*=pow(clamp(1.-dot(vig,vig)*2.2,0.,1.),.75);
+                    col+=(snoise(gl_FragCoord.xy*.8+u_t*23.)-.5)*.016;
+                    gl_FragColor=vec4(clamp(col,0.,1.),1.);
+                }
+            `;
+
+            function mkShader(type,src){
+                var s=gl.createShader(type);
+                gl.shaderSource(s,src);gl.compileShader(s);return s;
+            }
+            var prog=gl.createProgram();
+            gl.attachShader(prog,mkShader(gl.VERTEX_SHADER,VERT));
+            gl.attachShader(prog,mkShader(gl.FRAGMENT_SHADER,FRAG));
+            gl.linkProgram(prog);gl.useProgram(prog);
+
+            var buf=gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+            gl.bufferData(gl.ARRAY_BUFFER,
+                new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+            var loc=gl.getAttribLocation(prog,'a_pos');
+            gl.enableVertexAttribArray(loc);
+            gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+
+            var uT=gl.getUniformLocation(prog,'u_t');
+            var uR=gl.getUniformLocation(prog,'u_res');
+
+            function resize(){
+                var dpr=Math.min(devicePixelRatio,2);
+                canvas.width=canvas.clientWidth*dpr;
+                canvas.height=canvas.clientHeight*dpr;
+                gl.viewport(0,0,canvas.width,canvas.height);
+            }
+            window.addEventListener('resize',resize);
+            resize();
+
+            var t=0;
+            (function frame(){
+                t++;
+                gl.uniform1f(uT,t);
+                gl.uniform2f(uR,canvas.width,canvas.height);
+                gl.drawArrays(gl.TRIANGLES,0,6);
+                requestAnimationFrame(frame);
+            })();
+
+            requestAnimationFrame(function(){ canvas.classList.add('ready'); });
+        })();
+</script>
+</body>
+</html>
+
